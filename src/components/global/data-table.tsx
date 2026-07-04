@@ -7,7 +7,6 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table"
-import type { ColumnDef, SortingState } from "@tanstack/react-table"
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -16,9 +15,11 @@ import {
   ChevronsLeftIcon,
   ChevronsRightIcon,
 } from "lucide-react"
+import type { ColumnDef, SortingState } from "@tanstack/react-table"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Table,
   TableBody,
@@ -27,11 +28,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 
-export type DataTableProps<TData, TValue> = {
-  columns: Array<ColumnDef<TData, TValue>>
+type DataTableProps<TData> = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  columns: Array<ColumnDef<TData, any>>
   data: Array<TData> | undefined | null
   searchPlaceholder?: string
   pageSizeOptions?: Array<number>
@@ -60,10 +61,7 @@ export type DataTableProps<TData, TValue> = {
   onSearchSubmit?: () => void
 }
 
-const selectClassName =
-  "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50"
-
-export function DataTable<TData, TValue>({
+export function DataTable<TData>({
   columns,
   data,
   searchPlaceholder = "Cari...",
@@ -91,30 +89,19 @@ export function DataTable<TData, TValue>({
   searchValue,
   onSearchValueChange,
   onSearchSubmit,
-}: DataTableProps<TData, TValue>) {
+}: DataTableProps<TData>) {
   const safeData = Array.isArray(data) ? data : []
   const [internalSorting, setInternalSorting] = React.useState<SortingState>([])
   const [globalFilter, setGlobalFilter] = React.useState("")
-  const isServerSearch =
-    searchValue !== undefined && onSearchValueChange !== undefined
-
-  React.useEffect(() => {
-    if (!enableGlobalFilter && !isServerSearch) {
-      setGlobalFilter("")
-    }
-  }, [enableGlobalFilter, isServerSearch])
-
+  const isServerSearch = searchValue !== undefined && onSearchValueChange !== undefined
   const displaySearchValue = isServerSearch ? searchValue : globalFilter
-
-  const handleSearchChange = (value: string) => {
+  const handleSearchChange = (val: string) => {
     if (isServerSearch) {
-      onSearchValueChange?.(value)
-      return
+      onSearchValueChange?.(val)
+    } else {
+      setGlobalFilter(val)
     }
-
-    setGlobalFilter(value)
   }
-
   const sorting = controlledSorting ?? internalSorting
   const visibleColumnCount = Math.max(columns.length, 1)
   const skeletonRowCount = Math.max(1, loadingSkeletonRows)
@@ -133,45 +120,34 @@ export function DataTable<TData, TValue>({
       },
     },
     manualPagination,
-    manualSorting,
     pageCount: manualPagination ? pageCount : undefined,
     onSortingChange: (updater) => {
-      const nextSorting =
-        typeof updater === "function" ? updater(sorting) : updater
-
+      const nextSorting = typeof updater === "function" ? updater(sorting) : updater
       if (controlledSorting === undefined) {
         setInternalSorting(nextSorting)
       }
-
       onSortingChange?.(nextSorting)
     },
     onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getSortedRowModel: getSortedRowModel(),
+    getSortedRowModel: manualSorting ? undefined : getSortedRowModel(),
+    getFilteredRowModel: enableGlobalFilter ? getFilteredRowModel() : undefined,
     getPaginationRowModel: getPaginationRowModel(),
+    manualSorting,
     autoResetPageIndex,
   })
 
-  const currentPageIndex = manualPagination
-    ? pageIndex
-    : table.getState().pagination.pageIndex
-  const currentPageSize = manualPagination
-    ? pageSize
-    : table.getState().pagination.pageSize
+  const currentPageIndex = manualPagination ? pageIndex : table.getState().pagination.pageIndex
+  const currentPageSize = manualPagination ? pageSize : table.getState().pagination.pageSize
   const currentPageCount = manualPagination ? pageCount : table.getPageCount()
   const canPreviousPage = currentPageIndex > 0
   const canNextPage = currentPageIndex < Math.max(currentPageCount - 1, 0)
-  const visibleRowsCount = manualPagination
-    ? totalRows ?? safeData.length
-    : table.getFilteredRowModel().rows.length
 
   const setPage = (nextIndex: number) => {
     if (manualPagination) {
       onPageChange?.(nextIndex)
       return
     }
-
     table.setPageIndex(nextIndex)
   }
 
@@ -180,13 +156,12 @@ export function DataTable<TData, TValue>({
       onPageSizeChange?.(nextSize)
       return
     }
-
     table.setPageSize(nextSize)
   }
 
   return (
     <div className={cn("space-y-4", className)}>
-      {showTopControls ? (
+      {showTopControls && (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           {enableGlobalFilter || isServerSearch ? (
             <Input
@@ -206,28 +181,23 @@ export function DataTable<TData, TValue>({
           )}
 
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">
-              Baris per halaman
-            </span>
+            <span className="text-sm text-muted-foreground">Baris per halaman</span>
             <div className="w-24">
-              <select
-                aria-label="Baris per halaman"
-                className={cn(selectClassName)}
+              <Input
+                type="select"
                 value={String(currentPageSize)}
-                onChange={(event) => setSize(Number(event.target.value))}
-              >
-                {pageSizeOptions.map((size) => (
-                  <option key={size} value={String(size)}>
-                    {size}
-                  </option>
-                ))}
-              </select>
+                onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSize(Number(event.target.value))}
+                options={pageSizeOptions.map((size) => ({
+                  value: String(size),
+                  label: String(size),
+                }))}
+              />
             </div>
           </div>
         </div>
-      ) : null}
+      )}
 
-      <div className="max-h-[calc(100vh-320px)] overflow-auto rounded-2xl border border-border bg-card/50 backdrop-blur">
+      <div className="overflow-auto rounded-2xl border border-border bg-card/50 backdrop-blur max-h-[calc(100vh-320px)]">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -242,7 +212,7 @@ export function DataTable<TData, TValue>({
                         <button
                           type="button"
                           onClick={header.column.getToggleSortingHandler()}
-                          className="flex w-full select-none items-center gap-2 text-left font-black uppercase transition-colors hover:text-foreground"
+                          className="flex w-full items-center gap-2 text-left font-black uppercase select-none hover:text-foreground transition-colors"
                         >
                           {flexRender(
                             header.column.columnDef.header,
@@ -266,35 +236,25 @@ export function DataTable<TData, TValue>({
               </TableRow>
             ))}
           </TableHeader>
-
           <TableBody>
             {isLoading ? (
-              <>
-                {Array.from({ length: skeletonRowCount }).map((_, rowIndex) => (
-                  <TableRow key={`skeleton-row-${rowIndex}`}>
-                    {Array.from({ length: visibleColumnCount }).map(
-                      (_, cellIndex) => (
-                        <TableCell key={`skeleton-cell-${rowIndex}-${cellIndex}`}>
-                          <Skeleton className="h-4 w-full" />
-                        </TableCell>
-                      )
-                    )}
-                  </TableRow>
-                ))}
-                <TableRow>
-                  <TableCell
-                    colSpan={visibleColumnCount}
-                    className="py-6 text-center text-sm text-muted-foreground"
-                  >
-                    {loadingMessage}
-                  </TableCell>
+              Array.from({ length: skeletonRowCount }).map((_, rowIndex) => (
+                <TableRow key={`skeleton-row-${rowIndex}`}>
+                  {Array.from({ length: visibleColumnCount }).map((__, cellIndex) => (
+                    <TableCell key={`skeleton-cell-${rowIndex}-${cellIndex}`}>
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-full max-w-[220px]" />
+                        <Skeleton className="h-3 w-2/3 max-w-[160px]" />
+                      </div>
+                    </TableCell>
+                  ))}
                 </TableRow>
-              </>
+              ))
             ) : errorMessage ? (
               <TableRow>
                 <TableCell
                   colSpan={visibleColumnCount}
-                  className="py-10 text-center text-sm text-destructive"
+                  className="h-24 text-center text-destructive"
                 >
                   {errorMessage}
                 </TableCell>
@@ -303,23 +263,30 @@ export function DataTable<TData, TValue>({
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  data-state={row.getIsSelected() ? "selected" : undefined}
+                  data-state={row.getIsSelected() && "selected"}
                 >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
-                  ))}
+                  {row.getVisibleCells().map((cell) => {
+                    const rowSpanMeta = (cell.column.columnDef.meta as Record<string, unknown>)?.rowSpan
+                    const rowSpan = typeof rowSpanMeta === "function"
+                      ? (rowSpanMeta as (ctx: unknown) => number | undefined)(cell.getContext())
+                      : (rowSpanMeta as number | undefined)
+                    if (rowSpan === 0) return null
+                    return (
+                      <TableCell key={cell.id} rowSpan={rowSpan}>
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </TableCell>
+                    )
+                  })}
                 </TableRow>
               ))
             ) : (
               <TableRow>
                 <TableCell
                   colSpan={visibleColumnCount}
-                  className="py-10 text-center text-sm text-muted-foreground"
+                  className="h-24 text-center text-muted-foreground"
                 >
                   {emptyMessage}
                 </TableCell>
@@ -330,9 +297,19 @@ export function DataTable<TData, TValue>({
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">
-          {isLoading ? loadingMessage : `${visibleRowsCount} data`}
-        </p>
+        <div className="text-sm text-muted-foreground">
+          {isLoading ? loadingMessage : null}
+          {isLoading ? " " : null}
+          Menampilkan{" "}
+          <span className="font-medium text-foreground">
+            {table.getRowModel().rows.length}
+          </span>{" "}
+          dari{" "}
+          <span className="font-medium text-foreground">
+            {manualPagination ? (totalRows ?? table.getRowModel().rows.length) : table.getFilteredRowModel().rows.length}
+          </span>{" "}
+          baris
+        </div>
 
         <div className="flex items-center gap-2">
           <Button

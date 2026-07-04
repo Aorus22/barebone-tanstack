@@ -7,7 +7,7 @@ export const Route = createFileRoute("/healthz")({
         try {
           const { healthcheckDb } = await import("@/lib/server/db/kysely")
           await healthcheckDb()
-          return Response.json({ ok: true, service: "funnel-flow" })
+          return Response.json({ ok: true, service: "barebone" })
         } catch (error) {
           const message = error instanceof Error ? error.message : "Healthcheck failed"
           return Response.json({ ok: false, message }, { status: 503 })

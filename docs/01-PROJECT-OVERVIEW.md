@@ -1,126 +1,128 @@
-# Project Overview — Funnel Flow
+# Project Overview — Bare Bone
 
-## Tujuan Aplikasi
+## Application Purpose
 
-`funnel-flow` adalah proyek frontend berbasis React yang mengadopsi pola arsitektur dari `kime-warehouse`.
-Codebase sudah siap untuk:
+Bare Bone is a **generic full-stack application skeleton** built to accelerate development of new web applications. It provides a production-ready foundation with authentication, authorization, server-sent events, UI shell, and architecture patterns — so you can focus on business logic rather than infrastructure.
 
-- routing file-based dengan TanStack Router + layout groups (`(app)`, `(auth)`, `(landing)`)
-- styling dengan Tailwind CSS v4 + shadcn/ui
-- default pending/error components + NProgress loading bar
-- dark/light theme via next-themes
-- imperative confirm modal system
-- reusable DataTable, DatePicker, utility formatting
-- backend service skeleton (`src/backend/`) untuk pengembangan ke depan
+The project is intentionally **domain-agnostic**. No business modules are implemented yet. The skeleton is ready to be extended for any domain.
 
-## Tech Stack (Aktual)
+---
 
-- React 19
-- TypeScript
-- Vite 8
-- TanStack Start
-- TanStack Router
-- Tailwind CSS v4
-- shadcn/ui (`style: radix-nova`)
-- `lucide-react`
-- `@tanstack/react-table`
-- `next-themes`
-- `sonner`
-- `nprogress`
+## Tech Stack (Actual)
 
-## Data Stack (Direncanakan)
+| Layer | Technology |
+|-------|-----------|
+| Framework | TanStack Start v1 (React SSR) |
+| Router | TanStack Router (file-based) |
+| Runtime | Nitro (via Vite plugin) |
+| UI | React 19, shadcn/ui, Tailwind CSS v4 |
+| State / Server Sync | TanStack Query (via router SSR query) |
+| Table | TanStack Table v8 |
+| Rich Text | Tiptap v3 |
+| Charts | Recharts |
+| Toast | Sonner |
+| Animation | Motion (framer-motion successor) |
+| DB Client (migration) | Prisma v7 |
+| DB Client (runtime query) | Kysely v0.29 |
+| DB | PostgreSQL (via `pg`) |
+| Validation | Zod v4 |
+| Auth | Custom session (cookie + SHA256 token hash) |
+| Password | bcryptjs (pure JS, no native bindings) |
+| File Storage | S3-compatible bucket (MinIO via `MINIO_*` env vars) |
+| System Log | SQLite via `node:sqlite` (`logs/system-action.db`) |
+| SSE | In-memory job store (no Redis) |
 
-Untuk layer persistence ke depan, proyek ini akan memakai kombinasi:
+---
 
-- Prisma untuk schema, migration, dan client generation
-- Kysely untuk query runtime yang lebih eksplisit dan fleksibel
-
-Status saat ini:
-- belum ada package `prisma` / `@prisma/client` / `kysely`
-- belum ada folder `prisma/` atau file schema database
-
-## Struktur Direktori Utama
+## Directory Structure
 
 ```
-src/
-  backend/                # service skeleton (siap diisi)
-  components/
-    global/
-      data-table.tsx
-      confirm-modal-provider.tsx
-    ui/                   # shadcn primitives (56+ files)
-  hooks/
-    use-mobile.ts
-  lib/
-    client/
-      confirm-modal.ts
-      toast.ts
-    server/               # server utilities (siap diisi)
-    shared/               # shared libs (siap diisi)
-    utils.ts
-  router/                 # module-config skeleton
-  routes/
-    __root.tsx
-    (app)/route.tsx       # app layout group
-    (auth)/               # auth layout group (siap diisi)
-    (landing)/            # landing layout group (siap diisi)
-    api/                  # API routes (siap diisi)
-    index.tsx
-  ui/custom/icon/         # custom icon patterns
-  utils/
-    client-utils/
-      date.ts
-      format.ts
-    server-utils/         # server utils (siap diisi)
-  router.tsx
-  routeTree.gen.ts
-  styles.css
-docs/
-  ...
+barebone/
+  src/
+    backend/          → Server-side business logic & database access (empty — to be filled)
+    components/       → React UI components (global/ and ui/)
+    hooks/            → React Custom Hooks
+    lib/
+      client/         → Client-side helpers
+      server/         → Server-side helpers (auth, db, errors, session, env)
+      shared/         → Universal helpers (can be imported by both client & server)
+    router/           → Navigation module configuration (module-config.ts)
+    routes/           → File-based routing files
+      (app)/          → Authenticated layout group (uses AppShell)
+      (auth)/         → Login/logout flow
+      (landing)/      → Public universal pages
+      api/            → Standard API router (not used)
+    ui/               → Custom UI utilities
+    utils/            → Helper utilities (client-utils/, server-utils/)
+  prisma/             → Prisma schema definition & SQL migration files
+  logs/               → SQLite audit trail database (auto-generated)
+  storage/            → Local file storage directory
+  docs/               → Technical knowledge base
+  public/             → Static public assets (images, icons)
+  scripts/            → Helper automation scripts
 ```
 
-## Scripts NPM
+---
 
-- `npm run dev` — menjalankan dev server pada port `3000`
-- `npm run build` — build produksi
-- `npm run preview` — preview hasil build
-- `npm run test` — menjalankan Vitest
-- `npm run lint` — menjalankan ESLint
-- `npm run format` — menjalankan Prettier write
-- `npm run check` — memeriksa formatting
-- `npm run typecheck` — TypeScript type-check tanpa emit
+## NPM Scripts
 
-## Styling & Design Tokens
+| Script | Function |
+|--------|----------|
+| `npm run dev` | Dev server on port 3000 |
+| `npm run build` | Production build |
+| `npm run preview` | Preview build |
+| `npm run test` | Vitest run |
+| `npm run typecheck` | TypeScript check without emit |
+| `npm run lint` | ESLint |
+| `npm run format` | Prettier format all files |
 
-- CSS utama berada di `src/styles.css`
-- Tailwind diimport langsung via `@import "tailwindcss"`
-- shadcn theme layer aktif via `@import "shadcn/tailwind.css"`
-- font default menggunakan `@fontsource-variable/inter`
-- CSS variable tema terang/gelap sudah tersedia dan bisa dipakai ulang oleh komponen baru
+---
 
-## Konfigurasi TypeScript
+## Environment Variables (Server)
 
-- alias `@/*` diarahkan ke `src/*`
-- `moduleResolution` menggunakan `bundler`
-- `strict` aktif
-- `noEmit` aktif
+Defined and validated in `src/lib/server/env.ts` with Zod.
 
-## Konfigurasi shadcn
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `NODE_ENV` | `development` | `development` / `test` / `production` |
+| `DATABASE_URL` | — | **Required.** PostgreSQL connection string (`postgresql://...`) |
+| `HRIS_API_URL` | — | Optional. External HRIS API URL |
+| `HRIS_API_KEY` | — | Optional. HRIS API key |
+| `SESSION_COOKIE_NAME` | `app_session` | Session cookie name |
+| `SESSION_COOKIE_SECURE` | `false` | `true` for HTTPS production |
+| `SESSION_COOKIE_SAME_SITE` | `lax` | `lax` / `strict` / `none` |
 
-`components.json` saat ini memakai:
-- style: `radix-nova`
-- css: `src/styles.css`
-- baseColor: `neutral`
-- cssVariables: `true`
-- iconLibrary: `lucide`
+To read environment variables in server-side code:
+```ts
+// Must use getServerEnv() helper to guarantee correctly parsed types
+const { DATABASE_URL } = getServerEnv()
+```
 
-## Status Implementasi
+To read variables outside the Zod schema:
+```ts
+const value = getRequiredServerEnv("SOME_API_KEY")
+```
 
-- Routing dasar + layout groups aktif
-- Default pending/error components + NProgress aktif
-- Theme provider (dark/light) aktif
-- Confirm modal system aktif
-- Toast system (sonner + appToast) aktif
-- DataTable, DatePicker, date/format utilities tersedia
-- Backend service skeleton sudah siap
-- Halaman bisnis/domain belum mulai dibangun
+---
+
+## Vite Configuration
+
+File: `vite.config.ts`
+
+- Main plugins: `tanstackStart`, `nitro`, `tailwindcss`, `viteTsConfigPaths`
+- Path aliases via `tsconfig.json` + `viteTsConfigPaths`
+
+---
+
+## TypeScript Configuration
+
+Path alias `@/` → `src/` configured in `tsconfig.json`, activated by `viteTsConfigPaths`.
+
+---
+
+## Deployment
+
+- Dockerfile available at root
+- `docker-compose.yaml` available
+- Runtime: Nitro (Node.js)
+- Environment variables must be set at runtime (not hardcoded)

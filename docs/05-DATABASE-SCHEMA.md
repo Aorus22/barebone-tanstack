@@ -1,69 +1,139 @@
-# Database Schema — Funnel Flow
+# Database Schema — Bare Bone
 
-## Status Saat Ini
+Schema runtime types at `src/lib/server/db/schema.ts` (Kysely types).
+Schema migration at `prisma/schema.prisma`.
+DB connection: `src/lib/server/db/kysely.ts` → `getDb()`
 
-Belum ada skema database aplikasi yang didefinisikan di repo `funnel-flow`.
+---
 
-Yang belum ditemukan di codebase saat ini:
+## Current State
 
-- ORM setup
-- migration files
-- query layer
-- model/domain entity persistence
-- environment database connection
+The project is a skeleton. `prisma/schema.prisma` is currently **empty** — no tables have been defined yet. The following tables are **planned** based on the auth and infrastructure code already in the codebase:
 
-## Tooling Database yang Direncanakan
+### Auth & User Tables (planned)
 
-### Prisma sebagai Source of Truth Schema
+| Table | Description |
+|-------|-------------|
+| `user_accounts` | Internal users |
+| `user_sessions` | Active sessions per user |
+| `group_accesses` | Access groups (role groups) |
+| `group_module_visibilities` | Module visibility per group |
+| `group_permissions` | Permissions per group |
+| `app_modules` | Module definitions (from seed) |
+| `permissions` | Permission definitions (from seed) |
+| `user_module_visibilities` | Per-user module visibility overrides |
+| `user_permissions` | Per-user permission overrides |
+| `auth_impersonation_audits` | Login As audit trail |
 
-Saat persistence mulai ditambahkan, `schema.prisma` akan menjadi sumber utama untuk:
+### Domain Tables (to be added)
 
-- definisi model tabel
-- relasi
-- enum
-- migration history
+When implementing your domain, add tables via Prisma schema and migrations. The system is designed to be extended with any domain-specific tables.
 
-Direktori yang diharapkan:
+---
 
-```txt
-prisma/
-  schema.prisma
-  migrations/
+## Planned Table Details
+
+These are the tables the infrastructure code expects. They will need to be created in `prisma/schema.prisma` and have corresponding Kysely types in `src/lib/server/db/schema.ts`.
+
+### `user_accounts`
+```
+id                string (uuid)
+username          string — unique
+password_hash     string | null — bcrypt hash
+display_name      string | null
+group_id          string | null — FK to group_accesses
+is_active         boolean
+last_login_at     Date | null
+created_at        Date
+updated_at        Date
+deleted_at        Date | null — soft delete timestamp
 ```
 
-### Kysely sebagai Query Layer
+### `user_sessions`
+```
+id                         string (uuid)
+user_id                    string (FK user_accounts)
+session_token_hash         string — SHA256(raw token)
+impersonator_user_id       string | null — if impersonating
+original_session_id        string | null
+impersonation_started_at   Date | null
+expires_at                 Date
+last_seen_at               Date | null
+revoked_at                 Date | null — null = active
+ip_address                 string | null
+user_agent                 string | null
+created_at / updated_at    Date
+```
 
-Kysely direncanakan dipakai untuk:
+### `group_accesses`
+```
+id            string (uuid)
+name          string
+description   string | null
+is_active     boolean
+is_default    boolean — default group for new users
+created_at / updated_at / deleted_at
+```
 
-- query list dengan filter dinamis
-- pagination
-- sorting multi-kolom
-- query join/reporting yang lebih eksplisit
+### `app_modules` + `permissions`
+Master data tables initialized via seed scripts. Metadata modifications should only be done through seed script updates.
 
-Artinya, dokumentasi tabel di sini nantinya perlu berguna untuk dua hal sekaligus:
+---
 
-- konsistensi schema Prisma
-- akurasi kolom/relasi untuk query Kysely
+## System Log (Separate SQLite)
 
-## Implikasi
+System log is **not** in PostgreSQL. Stored in a SQLite file:
+- Path: `{cwd}/logs/system-action.db`
+- Auto-created on first write
+- Accessed via `node:sqlite` (Node.js built-in)
+- Table: `system_action_logs`
+- Queried via `src/lib/server/system-action-logger.ts`
 
-- Tidak ada tabel runtime yang perlu didokumentasikan saat ini.
-- Dokumen ini dipertahankan untuk menjaga struktur docs konsisten ketika fase persistence dimulai.
+This is **separate** from the main PostgreSQL schema.
 
-## Saat Database Mulai Ditambahkan
+---
 
-Dokumen ini perlu diisi minimal dengan:
+## How to Extend the Schema
 
-- daftar tabel utama,
-- relasi kunci,
-- enum penting,
-- aturan naming,
-- contoh pola query atau akses data.
+1. Edit `prisma/schema.prisma` to add new tables
+2. Run migration:
+   ```bash
+   npm run db:migrate
+   ```
+3. Update Kysely types in `src/lib/server/db/schema.ts` to match new tables
+4. Use `getDb()` in repository layer for runtime queries
 
-## Konvensi yang Disarankan
+---
 
-- nama tabel gunakan bentuk plural yang konsisten
-- foreign key diberi nama eksplisit dan stabil
-- semua perubahan schema dilakukan lewat migration Prisma
-- query runtime yang kompleks ditulis di repository berbasis Kysely
-- hindari duplikasi definisi struktur tabel di banyak tempat dokumentasi
+## Query Example (Kysely)
+
+```ts
+import { getDb } from "@/lib/server/db/kysely"
+
+const db = getDb()
+
+// Select
+const records = await db
+  .selectFrom("my_table as t")
+  .select(["t.id", "t.name"])
+  .where("t.status", "=", "active")
+  .orderBy("t.created_at", "desc")
+  .limit(20)
+  .execute()
+
+// Insert
+await db
+  .insertInto("my_table")
+  .values({
+    id: crypto.randomUUID(),
+    name: "Example",
+    ...
+  })
+  .execute()
+
+// Transaction
+await db.transaction().execute(async (trx) => {
+  await trx.insertInto("table_a").values(...).execute()
+  await trx.insertInto("table_b").values(...).execute()
+})
+```

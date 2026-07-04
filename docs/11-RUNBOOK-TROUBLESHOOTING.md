@@ -1,100 +1,117 @@
-# Developer Runbook & Troubleshooting — Funnel Flow
+# Developer Runbook & Troubleshooting — Bare Bone
 
-## 1. Setup Lokal
+This document contains standard operating procedures for local setup, database migration management, and runtime troubleshooting.
 
-### Prasyarat
+---
 
-- Node.js modern
-- npm
+## 1. Local Development Setup
 
-### Instalasi
+### Prerequisites
+- Node.js v20 or latest LTS
+- PostgreSQL v15 or v16 running locally
+- `logs/` and `storage/` directories in project root (auto-generated if missing)
+
+### Installation Procedure
+1. Clone repository and install dependencies:
+   ```bash
+   npm install
+   ```
+2. Copy `.env.example` to `.env` and adjust values:
+   ```bash
+   cp .env.example .env
+   ```
+3. Set `DATABASE_URL` to your local PostgreSQL.
+4. Run Prisma migrations to initialize database schema:
+   ```bash
+   npm run db:migrate
+   ```
+5. Start the development server:
+   ```bash
+   npm run dev
+   ```
+
+---
+
+## 2. Database Schema & Migration Management
+
+When making database schema changes, follow this workflow:
+
+1. **Edit Schema**: Edit `prisma/schema.prisma`.
+2. **Create & Apply Migration (LOCAL)**: Run the following to generate SQL migration and apply it to your local DB:
+   ```bash
+   npm run db:migrate
+   ```
+   *Prisma detects differences, creates a new SQL file in `prisma/migrations/`, and automatically applies it to your local DB.*
+3. **Sync Kysely**: After migration completes, update Kysely types in `src/lib/server/db/schema.ts` to match the new database structure.
+
+### `migrate dev` vs `migrate deploy`
+
+| Command | Environment | Function |
+|---------|-------------|----------|
+| `npx prisma migrate dev` | **Local (Dev)** | Reads schema, creates new `.sql` files in migrations folder, and applies directly to local DB interactively. |
+| `npx prisma migrate deploy` | **Production / CI-CD** | Reads existing `.sql` files in migrations folder and applies them to production DB non-interactively. |
+
+---
+
+## 3. Local Database Reconstruction (Clean Reset)
+
+To completely reset your local database:
 
 ```bash
-npm install
+# If a reset script exists, it will drop all schemas, re-run all migrations, and execute seed data
+# Otherwise: manually drop and recreate, then run migrations
+npm run db:migrate
 ```
 
-### Jalankan Dev Server
+---
 
-```bash
-npm run dev
-```
+## 4. Troubleshooting Procedures
 
-Default port:
+### Case A: PostgreSQL Connection Failure (`Connection Refused`)
+**Symptoms**: Server startup fails with `pg` connection error.
 
-- `3000`
+**Mitigation Steps**:
+1. Verify PostgreSQL service is running:
+   ```bash
+   pg_isready -h localhost
+   ```
+2. Validate `DATABASE_URL` in `.env` file (host, user, password, port).
+3. If using Docker, verify container network configuration.
 
-## 2. Quality Checks
+---
 
-### TypeScript
+### Case B: `MODULE_NOT_VISIBLE` or `PERMISSION_DENIED` on New Features
+**Symptoms**: Access denied errors ("You don't have access") when accessing new modules.
 
-```bash
-npm run typecheck
-```
+**Mitigation Steps**:
+1. Verify the new module is registered in `MODULE_IDS` at `src/lib/shared/permissions.ts`.
+2. Verify seed scripts include the new module and permission definitions.
+3. Run seed update to sync the database.
+4. Logout and login again to regenerate session with updated `accessPayload`.
 
-### Lint
+---
 
-```bash
-npm run lint
-```
+### Case C: Build Bundling Failure (`npm run build`)
+**Symptoms**: Vite/Rollup shows `Module level directives cause errors when bundled` or server-only code leaking into client bundle.
 
-### Test
+**Mitigation Steps**:
+1. Audit route files (`.tsx`). Ensure no **static imports** at top level from server-only directories (`@/backend/*` or `@/lib/server/*`).
+2. Convert static imports to async **dynamic imports** inside function handlers:
+   ```ts
+   // ❌ ILLEGAL
+   import { getDb } from "@/lib/server/db/kysely"
+   
+   // ✅ LEGAL
+   const { getDb } = await import("@/lib/server/db/kysely")
+   ```
+3. Verify `routeFileIgnorePattern` in `vite.config.ts` ensures `query.ts` and `server-action.ts` files are ignored by the router generator.
 
-```bash
-npm run test
-```
+---
 
-### Build
+### Case D: SQLite Database Lock (`Database Locked`)
+**Symptoms**: `SQLITE_BUSY` error when writing system action logs to `logs/system-action.db`.
 
-```bash
-npm run build
-```
-
-## 3. Troubleshooting Umum
-
-### Kasus 0: Prisma/Kysely Belum Tersedia
-
-Saat ini dokumentasi sudah mengasumsikan arah arsitektur Prisma + Kysely, tetapi package dan setup-nya belum ada di repo.
-
-Jadi jika Anda melihat referensi ke Prisma/Kysely di docs:
-
-- itu adalah keputusan arsitektur yang direncanakan,
-- bukan indikator bahwa data layer tersebut sudah aktif.
-
-### Kasus A: Alias `@/` Tidak Ter-resolve
-
-Periksa:
-
-- `tsconfig.json` memiliki path `@/* -> ./src/*`
-- import memakai ekstensi/pattern yang kompatibel dengan bundler mode
-
-### Kasus B: Style Tidak Muncul
-
-Periksa:
-
-- `src/styles.css` masih direferensikan oleh `src/routes/__root.tsx`
-- import `tailwindcss`, `tw-animate-css`, dan `shadcn/tailwind.css` tidak terhapus
-
-### Kasus C: Route Baru Tidak Terbaca
-
-Periksa:
-
-- file route berada di `src/routes`
-- route menggunakan `createFileRoute(...)`
-- proses dev server/regenerasi route tree berjalan normal
-
-### Kasus D: Komponen Tabel Tidak Berjalan Sesuai Ekspektasi
-
-Periksa:
-
-- kolom menggunakan `ColumnDef` dari `@tanstack/react-table`
-- data selalu berupa array atau fallback aman
-- mode manual (`manualPagination`, `manualSorting`) diberi callback yang sesuai
-
-### Kasus E: Typecheck Gagal pada Komponen UI Bawaan
-
-Jika error muncul di komponen template bawaan, pisahkan dulu:
-
-- apakah error berasal dari kode baru yang Anda tambahkan,
-- atau dari starter/template dependency yang memang belum sepenuhnya sinkron.
-
-Dokumentasikan temuan itu sebelum memperbaiki agar perubahan tetap terukur.
+**Mitigation Steps**:
+1. SQLite locks the entire database file during high-frequency concurrent writes.
+2. Ensure `logs/system-action.db` is not opened by external database editors (DB Browser for SQLite, VSCode extensions).
+3. Close external connections and restart the dev server.

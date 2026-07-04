@@ -1,15 +1,25 @@
-export const MODULE_ACTIONS = ["create", "update", "delete"] as const
+export const MODULE_ACTIONS = ["create", "read", "update", "delete"] as const
 export type ModuleAction = (typeof MODULE_ACTIONS)[number]
 
-export type ModuleId = string
-export type ModuleActionPermission = string
+export const MODULE_IDS = [] as const
 
-export const MODULE_AVAILABLE_ACTIONS: Record<string, ReadonlyArray<ModuleAction>> = {}
+export type ModuleId = (typeof MODULE_IDS)[number]
+export type ModuleActionPermission = `${ModuleId}.${ModuleAction}`
 
-export function getModuleAvailableActions(moduleId: string): ReadonlyArray<ModuleAction> {
-  return MODULE_AVAILABLE_ACTIONS[moduleId] ?? []
+export const MODULE_AVAILABLE_ACTIONS: Record<
+  ModuleId,
+  ReadonlyArray<ModuleAction>
+> = {}
+
+export function getModuleAvailableActions(
+  moduleId: ModuleId
+): ReadonlyArray<ModuleAction> {
+  return MODULE_AVAILABLE_ACTIONS[moduleId]
 }
 
-export function getModuleActionPermission(moduleId: string, action: ModuleAction): string {
+export function getModuleActionPermission(
+  moduleId: ModuleId,
+  action: ModuleAction
+): ModuleActionPermission {
   return `${moduleId}.${action}`
 }

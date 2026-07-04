@@ -1,7 +1,7 @@
 import { setCookie as tanstackSetCookie, getCookie as tanstackGetCookie, deleteCookie as tanstackDeleteCookie } from "@tanstack/react-start/server"
 
 function getSessionCookieName() {
-  return process.env.SESSION_COOKIE_NAME || "ff_session"
+  return process.env.SESSION_COOKIE_NAME || "app_session"
 }
 
 export function setSessionCookie(sessionToken: string, expiresAt: Date) {

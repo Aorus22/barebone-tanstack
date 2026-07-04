@@ -1,69 +1,93 @@
-# Funnel Flow — Knowledge Base Index
+# Bare Bone — Knowledge Base Index
 
-## Ringkasan Proyek
+This document is the main entry point for all project documentation.
+**Read this first** before reading other documents.
 
-`funnel-flow` adalah proyek frontend berbasis TanStack Start + React + TypeScript + shadcn/ui.
-Struktur proyek mengikuti pola arsitektur dari `kime-warehouse` dengan layout route groups, backend service skeleton, dan reusable components.
+---
 
-## Daftar Dokumen
+## Project Summary
 
-- [01-PROJECT-OVERVIEW.md](./01-PROJECT-OVERVIEW.md) — gambaran proyek, stack, struktur direktori, dan script utama.
-- [02-ROUTE-MAP.md](./02-ROUTE-MAP.md) — peta route yang aktif, layout groups, dan pola route file.
-- [03-ARCHITECTURE-BE.md](./03-ARCHITECTURE-BE.md) — status backend saat ini dan batasan integrasi.
-- [04-ARCHITECTURE-FE.md](./04-ARCHITECTURE-FE.md) — arsitektur frontend, router, styling, komponen, hooks, dan utilities.
-- [05-DATABASE-SCHEMA.md](./05-DATABASE-SCHEMA.md) — status persistence dan catatan saat belum ada database aplikasi.
-- [06-RBAC-PERMISSIONS.md](./06-RBAC-PERMISSIONS.md) — status otorisasi saat ini dan rencana titik masuk jika fitur auth ditambahkan.
-- [07-SSE-JOBS.md](./07-SSE-JOBS.md) — status real-time job/SSE saat ini.
-- [08-CODE-PATTERNS.md](./08-CODE-PATTERNS.md) — pola coding, alias import, dan reusable component.
-- [09-FLOW-DIAGRAMS.md](./09-FLOW-DIAGRAMS.md) — alur render/routing yang aktif sekarang.
-- [10-ADR.md](./10-ADR.md) — keputusan arsitektur yang sudah terlihat dari codebase.
-- [11-RUNBOOK-TROUBLESHOOTING.md](./11-RUNBOOK-TROUBLESHOOTING.md) — setup lokal dan masalah umum.
-- [12-PRODUCTION-SCALING-GUIDE.md](./12-PRODUCTION-SCALING-GUIDE.md) — catatan kesiapan produksi dan area yang belum dibangun.
+Bare Bone is a **generic full-stack application skeleton** built with TanStack Start + React + TypeScript. It provides a ready-to-use foundation for building any web application domain. The current state is a **clean template** — no business domain has been implemented yet.
 
-## Quick Reference
+- Stack: TanStack Start (full-stack React SSR), PostgreSQL (Kysely), Prisma (migration)
+- Render: SSR via Nitro, file-based routing via TanStack Router
+- Current state: Skeleton with auth, RBAC, SSE, UI shell, and code architecture patterns
 
-### Entry Point Utama
+---
 
-- `src/router.tsx` — instance router TanStack dengan default pending/error components + NProgress.
-- `src/routes/__root.tsx` — shell dokumen HTML dengan ThemeProvider, ConfirmModalProvider, Toaster.
-- `src/routes/index.tsx` — halaman `/` saat ini.
+## Document List
 
-### Layout Groups
+| File | Content |
+|------|--------|
+| [`01-PROJECT-OVERVIEW.md`](./01-PROJECT-OVERVIEW.md) | Stack, setup, scripts, environment vars |
+| [`02-ROUTE-MAP.md`](./02-ROUTE-MAP.md) | All routes, layout groups, sidebar |
+| [`03-ARCHITECTURE-BE.md`](./03-ARCHITECTURE-BE.md) | Backend: service layer, repository, server fn, contracts |
+| [`04-ARCHITECTURE-FE.md`](./04-ARCHITECTURE-FE.md) | Frontend: routing, components, query, SSE, UI patterns |
+| [`05-DATABASE-SCHEMA.md`](./05-DATABASE-SCHEMA.md) | All Kysely tables (actual schema) |
+| [`06-RBAC-PERMISSIONS.md`](./06-RBAC-PERMISSIONS.md) | Access system: visibleModules, permissions, module actions |
+| [`07-SSE-JOBS.md`](./07-SSE-JOBS.md) | In-memory SSE job system, job types, usage |
+| [`08-CODE-PATTERNS.md`](./08-CODE-PATTERNS.md) | Mandatory code patterns, anti-patterns, real examples |
+| [`09-FLOW-DIAGRAMS.md`](./09-FLOW-DIAGRAMS.md) | Interactive flow diagrams (Mermaid) |
+| [`10-ADR.md`](./10-ADR.md) | Architecture Decision Records (Design Rationale) |
+| [`11-RUNBOOK-TROUBLESHOOTING.md`](./11-RUNBOOK-TROUBLESHOOTING.md) | Development runbook & troubleshooting |
+| [`12-PRODUCTION-SCALING-GUIDE.md`](./12-PRODUCTION-SCALING-GUIDE.md) | Deployment & scaling guide |
 
-- `(app)/` — authenticated app layout (masih shell minimal, siap untuk AppShell/Sidebar/Topbar)
-- `(auth)/` — auth layout (login/logout halaman)
-- `(landing)/` — public landing page
+---
 
-### Komponen Reusable
+## Quick Reference for Agent
 
-- `src/components/ui/*` — library komponen UI berbasis shadcn/radix-nova (56+ files)
-- `src/components/global/data-table.tsx` — wrapper tabel generik `@tanstack/react-table`
-- `src/components/global/confirm-modal-provider.tsx` — imperative confirm dialog via `confirmModal()`
-- `src/components/ui/date-picker.tsx` — date picker dengan popover calendar
-- `src/lib/client/toast.ts` — `appToast.success/error/info` wrapper untuk sonner
-- `src/lib/client/confirm-modal.ts` — imperative API untuk confirm modal
-- `src/lib/utils.ts` — helper `cn(...)`
-- `src/utils/client-utils/date.ts` — format tanggal Asia/Jakarta
-- `src/utils/client-utils/format.ts` — format currency/number IDR
-- `src/hooks/use-mobile.ts` — helper responsif `useIsMobile()`
+### Adding a New Feature
+1. Create backend module at `src/backend/<feature>/`
+2. Add route at `src/routes/(app)/<group>/<module>/`
+3. Register module in `src/router/module-config.ts`
+4. Register permission in `src/lib/shared/permissions.ts`
 
-### Path Aliases
+### Design Decisions & Architecture
+→ Technology choices (Kysely, SQLite, In-Memory SSE) documented in [`10-ADR.md`](./10-ADR.md).
 
-- `@/components` → `src/components`
-- `@/components/ui` → `src/components/ui`
-- `@/lib` → `src/lib`
-- `@/hooks` → `src/hooks`
-- `@/utils` → `src/utils`
-- `@/backend` → `src/backend`
+### Troubleshooting
+→ Database locks, bundling errors, and permission issues in [`11-RUNBOOK-TROUBLESHOOTING.md`](./11-RUNBOOK-TROUBLESHOOTING.md).
 
-### Status Arsitektur Saat Ini
+### Production Deployment Policy
+→ Blue/green deploy workflow, deploy guard scripts, and shell guards in [`12-PRODUCTION-SCALING-GUIDE.md`](./12-PRODUCTION-SCALING-GUIDE.md).
 
-- Routing dengan layout groups sudah aktif
-- Default pending/error components sudah terpasang di router
-- NProgress loading bar aktif
-- Dark/light theme via next-themes aktif
-- Confirm modal system aktif
-- Backend service skeleton (`src/backend/`) sudah siap diisi
-- Prisma dan Kysely sudah dipilih sebagai arah data layer, tetapi belum diinstal/diimplementasikan
+### Server Function & Mutation Patterns
+→ See `createServerFn`, `createServerOnlyFn`, and `withSystemLog` wrapper patterns in [`08-CODE-PATTERNS.md`](./08-CODE-PATTERNS.md).
 
-Dokumen dengan topik backend/database tetap disediakan agar struktur knowledge base konsisten sejak awal, tetapi kontennya mencerminkan status proyek yang masih frontend-first.
+### Database Runtime Access
+→ Database access must use Kysely query builder referencing schema definitions at `src/lib/server/db/schema.ts`. See [`05-DATABASE-SCHEMA.md`](./05-DATABASE-SCHEMA.md).
+
+### Backend Authorization Enforcement
+→ See `assertModuleVisible` and `assertModuleActionPermission` mechanisms in [`06-RBAC-PERMISSIONS.md`](./06-RBAC-PERMISSIONS.md).
+
+### Real-time Process Management (SSE)
+→ In-memory progress job creation, updates, and completion documented in [`07-SSE-JOBS.md`](./07-SSE-JOBS.md).
+
+---
+
+## Path Aliases
+
+| Alias | Resolves to |
+|-------|------------|
+| `@/backend/*` | `src/backend/*` |
+| `@/lib/server/*` | `src/lib/server/*` |
+| `@/lib/client/*` | `src/lib/client/*` |
+| `@/lib/shared/*` | `src/lib/shared/*` |
+| `@/components/*` | `src/components/*` |
+| `@/router/*` | `src/router/*` |
+| `@/hooks/*` | `src/hooks/*` |
+| `@/utils/*` | `src/utils/*` |
+
+---
+
+## Current State
+
+This is a **skeleton project** with no domain-specific modules yet. The following infrastructure is ready:
+
+- **Auth**: Custom session-based auth (cookie + SHA256 token hash)
+- **RBAC**: Module visibility + action permissions system
+- **SSE**: In-memory job progress tracking infrastructure
+- **UI Shell**: AppShell, Sidebar, Topbar, DataTable, and global components
+- **Architecture**: Service/Repository separation, server function patterns
+- **Database**: Kysely query builder ready, Prisma for migrations
+- **File Storage**: S3-compatible (MinIO) infrastructure

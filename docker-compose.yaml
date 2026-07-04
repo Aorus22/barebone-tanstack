@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: barebone
+      POSTGRES_PASSWORD: barebone
+      POSTGRES_DB: barebone
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U barebone"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://barebone:barebone@db:5432/barebone
+      SSE_SHARED_SECRET: change-me-to-a-random-secret-at-least-16-chars
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:

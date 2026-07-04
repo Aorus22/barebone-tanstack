@@ -21,5 +21,6 @@ export async function confirmModal(message: string, options?: ConfirmModalOption
   if (!confirmModalHandler) {
     throw new Error("ConfirmModalProvider is not mounted")
   }
+
   return confirmModalHandler(message, options)
 }

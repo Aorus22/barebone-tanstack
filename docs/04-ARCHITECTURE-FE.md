@@ -1,162 +1,358 @@
-# Frontend Architecture — Funnel Flow
+# Frontend Architecture — Bare Bone
 
-## Boundary Utama
+This document describes the frontend architecture **based on the actual code**.
 
-Frontend terbagi menjadi beberapa area:
+> For backend, see `03-ARCHITECTURE-BE.md`.
 
-- `src/routes` — page dan shell berbasis TanStack Router
-- `src/components/ui` — primitive/preset UI dari shadcn
-- `src/components/global` — reusable component tingkat aplikasi
-- `src/hooks` — custom hooks
-- `src/lib` — client/server/shared libraries
-- `src/utils` — formatting dan utility functions
-- `src/backend` — service skeleton (frontend-adjacent, untuk server functions)
-- `src/router` — module config pattern
+---
 
-## Router
+## Goals
 
-`src/router.tsx` membuat router dengan konfigurasi:
+- Clear separation between UI/client code and server business logic
+- Consistent UI/UX across modules
+- Predictable feature folder structure
 
-- `scrollRestoration: true`
-- `defaultPreload: "intent"`
-- `defaultPreloadStaleTime: 0`
-- `defaultPendingComponent` — spinner `Loader2`
-- `defaultErrorComponent` — halaman error dengan `AlertTriangle` + tombol reload
-- NProgress — progress bar di top-of-page saat navigasi
+---
 
-`src/routes/__root.tsx` menjadi shell global untuk:
+## Stack FE
 
-- metadata dasar HTML + stylesheet
-- ThemeProvider (next-themes)
-- ConfirmModalProvider
-- Toaster (sonner)
-- TanStack Devtools (conditional via `VITE_ENABLE_TANSTACK_DEVTOOLS`)
-- Scripts
+- React 19 + TypeScript
+- TanStack Router (file-based routing) + TanStack Start
+- TanStack Table v8 (all tables)
+- TanStack Query (via `@tanstack/react-router-ssr-query`)
+- shadcn/ui + Tailwind CSS v4
+- Sonner (toast notifications)
+- Zod (client-side form validation)
+- Tiptap v3 (rich text editor)
+- Recharts (charts)
+- Motion (animations)
+
+---
+
+## Structure `src/` (FE Scope)
+
+```
+src/
+  routes/
+    (app)/
+      route.tsx           → layout group, auth guard
+      <group>/            → module groups (warehouse, settings, etc.)
+        <module>/         → feature modules
+          index.tsx       → page component
+          query.ts        → server functions for reads
+          server-action.ts → server functions for mutations
+          -component.tsx  → local components (prefix -)
+    (auth)/
+      login.tsx
+      logout.tsx
+    __root.tsx            → root layout
+    __root-query.ts       → root loader
+
+  components/
+    global/
+      app-shell.tsx              → main layout (sidebar + topbar + QueryClientProvider)
+      sidebar.tsx                → navigation + user profile popover + group switcher
+      topbar.tsx                 → header with breadcrumbs
+      data-table.tsx             → reusable TanStack Table wrapper
+      confirm-modal-provider.tsx → global confirm dialog
+      sse-provider.tsx           → SSE connection to /sse endpoint
+      app-update-manager.tsx     → check & prompt app update
+      reset-password-dialog.tsx  → reset password dialog from sidebar
+      image-preview-wrapper.tsx  → image preview via react-photo-view
+      pdf-preview-modal.tsx      → PDF preview via iframe + drag-to-pan + zoom
+      docx-preview-modal.tsx     → DOCX preview via docx-preview + zoom
+      attachment-file-row.tsx    → row: icon + name + size + preview + download
+      not-found-page.tsx         → 404 page
+    ui/
+      ... (shadcn components)
+      custom/             → custom UI components
+
+  hooks/
+    use-mobile.ts
+    use-sse-jobs.ts       → subscribe to SSE job updates
+
+  router/
+    module-config.ts      → single source of truth for sidebar modules
+
+  lib/
+    client/               → client-only helpers
+    shared/
+      permissions.ts      → MODULE_ACTIONS, permission constants
+      with-system-log.ts  → system log wrapper (shared, usable by server fn)
+
+  ui/
+    custom/               → extended custom UI
+
+  utils/
+    client-utils/
+    server-utils/
+```
+
+---
+
+## Routing
+
+### File-Based Routing
+
+Routes are auto-generated from `src/routes/` structure. The router generator produces `src/routeTree.gen.ts`.
+
+**Routing rules:**
+- Each page = one route file at `src/routes/(app)/<group>/<module>/index.tsx`
+- Sub-routes = files or sub-folders inside the module folder
+- Files prefixed with `-` → local component, **not** a route
+- Files `query.ts` and `server-action.ts` → ignored by router (via `routeFileIgnorePattern`)
 
 ### Layout Groups
 
-- `(app)/route.tsx` — app layout (container flex, siap untuk AppShell)
-- `(auth)/` — auth layout (belum ada route)
-- `(landing)/` — landing layout (belum ada route)
+```
+(app)/route.tsx      → auth guard + AppShell wrapper
+  <group>/            → module groups (no additional layout)
 
-## Styling System
+(auth)/route.tsx     → login layout
+```
 
-Sumber style utama ada di `src/styles.css`.
+### Route File Pattern
 
-Karakteristik:
+```tsx
+// src/routes/(app)/<group>/<module>/index.tsx
+import { createFileRoute } from "@tanstack/react-router"
 
-- Tailwind CSS v4
-- `tw-animate-css`
-- shadcn theme layer (radix-nova)
-- font `Inter Variable`
-- CSS variable untuk theme terang/gelap
+function MyPage() {
+  return <div>...</div>
+}
 
-## Library Komponen UI
-
-`src/components/ui` berisi komponen siap pakai seperti:
-
-- form controls (`input`, `select`, `textarea`, `checkbox`, `radio-group`)
-- feedback (`alert`, `progress`, `skeleton`, `sonner`)
-- overlays (`dialog`, `drawer`, `popover`, `sheet`, `tooltip`)
-- navigasi/layout (`breadcrumb`, `sidebar`, `tabs`, `navigation-menu`)
-- data display (`table`, `card`, `chart`, `item`, `date-picker`)
-
-Folder ini diperlakukan sebagai shared UI layer, bukan tempat logic bisnis.
-
-## Komponen Global
-
-### DataTable
-
-Lokasi: `src/components/global/data-table.tsx`
-
-Wrapper reusable untuk `@tanstack/react-table` dengan dukungan:
-- sorting internal atau manual
-- pencarian/filter global
-- loading, error, dan empty state
-- pagination internal atau manual
-- integrasi kolom generik berbasis `ColumnDef<TData, TValue>`
-
-### ConfirmModalProvider
-
-Lokasi: `src/components/global/confirm-modal-provider.tsx`
-
-Imperative confirm dialog. Dipasang di `__root.tsx`, dipanggil dari mana saja via:
-
-```ts
-import { confirmModal } from "@/lib/client/confirm-modal"
-
-const confirmed = await confirmModal("Hapus item ini?", {
-  title: "Konfirmasi Hapus",
-  confirmText: "Hapus",
-  destructive: true,
+export const Route = createFileRoute("/(app)/<group>/<module>/")({
+  component: MyPage,
+  // Optional:
+  // loader: async ({ context }) => await getPageData({...}),
+  // beforeLoad: async () => { ... }
 })
 ```
 
-### DatePicker
+---
 
-Lokasi: `src/components/ui/date-picker.tsx`
+## Server Functions in Frontend
 
-Date picker dengan popover calendar:
-- input/output format: `YYYY-MM-DD`
-- placeholder kustom
-- tombol clear
-- disabled state
-- locale Indonesia
+### `query.ts` — Data Fetching
 
-## Hooks
-
-### `useIsMobile()`
-
-Lokasi: `src/hooks/use-mobile.ts`
-
-Mendeteksi viewport mobile dengan breakpoint `768px`.
-
-## Client Libraries
-
-### Toast
-
-Lokasi: `src/lib/client/toast.ts`
+Contains `createServerFn({ method: "POST" })` or `GET` for data fetching. Does not need `withSystemLog` for read-only queries.
 
 ```ts
-import { appToast } from "@/lib/client/toast"
+// routes/(app)/<group>/<module>/query.ts
+const runGetList = createServerOnlyFn(async (data: {...}) => {
+  const { getServerActionContext } = await import("@/lib/server/context")
+  const ctx = await getServerActionContext()
+  return someService.getList(ctx, data)
+})
 
-appToast.success("Berhasil disimpan")
-appToast.error("Gagal memuat data")
-appToast.info("Sedang diproses...")
+export const getList = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => data as {...})
+  .handler(async ({ data }) => runGetList(data))
 ```
 
-### Confirm Modal (Imperative API)
+### `server-action.ts` — Mutations
 
-Lokasi: `src/lib/client/confirm-modal.ts`
+Contains `createServerFn` for mutations. **Must** be wrapped with `withSystemLog`.
 
 ```ts
-const confirmed = await confirmModal(message, options?)
+// routes/(app)/<module>/server-action.ts
+export const createRecord = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => data)
+  .handler(async ({ data }) => {
+    return withSystemLog("module.create", data, async () => {
+      const service = await import("@/backend/<module>/<module>.service")
+      return service.create(ctx, data)
+    })
+  })
 ```
 
-## Utilities
+---
 
-### Date Formatting
+## UI Components
 
-Lokasi: `src/utils/client-utils/date.ts`
+### shadcn/ui
 
-- `formatJakartaDateTime(value)` — "17 Jun 2026 14:30"
-- `formatJakartaDate(value)` — "17 Jun 2026"
+Components available at `src/components/ui/`. Add via:
+```sh
+npx shadcn@latest add <component-name>
+```
 
-### Number/Currency Formatting
+Import:
+```ts
+import { Button } from "@/components/ui/button"
+import { Dialog } from "@/components/ui/dialog"
+```
 
-Lokasi: `src/utils/client-utils/format.ts`
+### Global Components
 
-- `formatCurrency(value)` — "Rp1.000.000"
-- `formatNumber(value)` — "1.000.000"
-- `formatDate(date)` — "17 Juni 2026"
-- `formatDateTime(date)` — "17 Juni 2026 14:30"
-- `formatTime(date)` — "14:30"
+| Component | Path | Description |
+|-----------|------|-------------|
+| `AppShell` | `components/global/app-shell.tsx` | Main layout (sidebar + topbar) |
+| `DataTable` | `components/global/data-table.tsx` | TanStack Table wrapper |
+| `ConfirmModalProvider` | `components/global/confirm-modal-provider.tsx` | Global confirm dialog |
+| `SseProvider` | `components/global/sse-provider.tsx` | SSE connection, job subscription |
+| `Sidebar` | `components/global/sidebar.tsx` | Navigation + group switcher |
+| `Topbar` | `components/global/topbar.tsx` | App header |
 
-## Prinsip Struktur
+---
 
-- komponen visual murni masuk `components/ui`
-- reusable app-level component masuk `components/global`
-- route tetap tipis jika logic bertambah
-- utilitas class merge tetap menggunakan `cn()`
-- formatting logic di `utils/`, bukan di komponen
-- custom hooks di `hooks/`, bukan di komponen
+## Tables
+
+All tables use **TanStack Table v8** via the `DataTable` component.
+
+```tsx
+import { DataTable } from "@/components/global/data-table"
+
+const columns: ColumnDef<MyRow>[] = [...]
+
+<DataTable columns={columns} data={rows} />
+```
+
+---
+
+## Forms
+
+Forms use Zod for client-side validation.
+Pattern:
+1. Define Zod schema
+2. Parse/safeParse before submit
+3. Handle `fieldErrors` from `AppError` response
+
+No form library (no react-hook-form). Form state managed locally in page components.
+
+---
+
+## Toast Notifications
+
+Uses **Sonner**:
+```ts
+import { toast } from "sonner"
+
+toast.success("Saved successfully")
+toast.error("An error occurred")
+toast.loading("Processing...")
+```
+
+---
+
+## Confirm Modal
+
+Global confirm dialog via `ConfirmModalProvider`:
+
+```ts
+import { confirm } from "@/lib/client/confirm-modal"
+
+const ok = await confirm({
+  title: "Delete data?",
+  description: "This action cannot be undone.",
+  confirmLabel: "Delete",
+})
+if (ok) { /* proceed */ }
+```
+
+---
+
+## SSE (Server-Sent Events) in Frontend
+
+### SseProvider
+
+`src/components/global/sse-provider.tsx` opens a connection to the `/sse` endpoint and exposes job state via React context.
+
+### Hook: `useSseJobs`
+
+```ts
+const { jobs, activeJobs } = useSseJobs()
+// jobs: SseJob[]
+// activeJobs: SseJob[] (status queued or running)
+```
+
+---
+
+## Auth & Session in FE
+
+### Auth check in routes
+
+Done in `(app)/route.tsx` via `checkSession` server function — no need for per-route checks.
+
+### Session data access
+
+Session is loaded in `__root-query.ts` (root loader) and available via router context.
+
+### Impersonation UI
+
+Sidebar shows a banner when in impersonation mode.
+"Return to original account" button calls `returnToOriginalAccount()`.
+
+---
+
+## Permission Check in FE
+
+Frontend shows/hides UI based on permissions (UX only, **not security**):
+
+```ts
+// Get permissions from session actor
+const permissions = session.actor?.permissions ?? []
+
+// Check visibility
+const canCreate = permissions.includes("users.create")
+```
+
+**Remember**: Real security is enforced in backend. Hiding buttons in UI = UX, not security.
+
+---
+
+## Module Config & Sidebar Design Standards
+
+Sidebar reads `moduleConfig` from `src/router/module-config.ts` and filters based on `session.actor.visibleModules`.
+
+Group switcher in topbar: toggles between module groups.
+
+### Sidebar UI/UX Standards:
+
+1. **Dynamic Menu Rendering**: Sidebar renders all menus in a single loop in linear order as declared in module-config. Rendered parents tracked via `Set` to prevent duplicate rendering.
+
+2. **Parent Menu Alignment**: Parent menus use uniform text size, padding, and icon size. Highlighted with border only when a child is active.
+
+3. **Sub-menu Visual Design**: Sub-menus wrapped in left-border container. Smaller font and padding for hierarchy indication.
+
+4. **Instant Transitions & Optimistic UI**: Active items use `transition-none` for instant color switching. Sidebar uses `pendingModulePath` state for optimistic UI highlighting.
+
+5. **Collapsed Alignment**: When sidebar is collapsed (88px width), vertical lines hidden, child menu icons aligned with parent.
+
+6. **Auto Scroll-Into-View**: `scrollIntoView({ behavior: "smooth", block: "nearest" })` via `useEffect` on page load or navigation change.
+
+---
+
+## Import Boundary Rules (FE)
+
+- `@/lib/client/*` — **client-only**, do not import in server fn handlers
+- `@/lib/server/*` — **server-only**, do not import in React components
+- `@/lib/shared/*` — safe, usable anywhere
+- `@/components/*` — client-only React components
+- `@/backend/*` — **server-only**, only dynamic import in server fn handlers
+
+---
+
+## Anti-Patterns (Strictly Prohibited)
+
+```ts
+// ❌ Business logic in page component
+function MyPage() {
+  const processData = (data) => {
+    // ← this should be in service layer
+    if (data.some(r => r.isDuplicate)) { ... }
+  }
+}
+
+// ❌ Import server-only code in React components
+import { getDb } from "@/lib/server/db/kysely"  // ← crashes on client
+
+// ❌ Mutation without withSystemLog in server-action.ts
+export const deleteRecord = createServerFn({ method: "POST" })
+  .handler(async ({ data }) => {
+    await service.delete(data.id)  // ← not logged in system log
+  })
+
+// ❌ Duplicating module label/path across files
+// Use moduleConfig from src/router/module-config.ts as single source of truth
+```

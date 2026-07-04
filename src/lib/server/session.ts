@@ -29,7 +29,24 @@ async function defaultSessionResolver(): Promise<ServerSession> {
     return { actor: undefined }
   }
 
-  return { actor: undefined }
+  try {
+    const { getSessionByToken } = await import("@/backend/auth/auth.service")
+    const session = await getSessionByToken(sessionToken)
+
+    if (!session) {
+      return { actor: undefined }
+    }
+
+    return {
+      sessionId: session.sessionId,
+      userId: session.userId,
+      actor: session.actor,
+      expiresAt: session.expiresAt,
+      impersonation: session.impersonation,
+    }
+  } catch {
+    return { actor: undefined }
+  }
 }
 
 export async function getServerSession(): Promise<ServerSession> {

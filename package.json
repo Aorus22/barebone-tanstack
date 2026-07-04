@@ -10,7 +10,11 @@
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx}\"",
     "check": "prettier --check \"**/*.{ts,tsx,js,jsx}\"",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "seed:core": "npx tsx --env-file .env commands/seed-core/index.ts",
+    "seed:groups": "npx tsx --env-file .env commands/seed-groups/index.ts",
+    "seed:users": "npx tsx --env-file .env commands/seed-users/index.ts",
+    "seed": "npm run seed:core && npm run seed:groups && npm run seed:users"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
