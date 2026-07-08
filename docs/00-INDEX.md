@@ -7,11 +7,13 @@ This document is the main entry point for all project documentation.
 
 ## Project Summary
 
-Bare Bone is a **generic full-stack application skeleton** built with TanStack Start + React + TypeScript. It provides a ready-to-use foundation for building any web application domain. The current state is a **clean template** — no business domain has been implemented yet.
+Bare Bone adalah **full-stack application skeleton** dengan feature set yang sudah berfungsi: JWT auth, admin panel (User & Group Management), Audit Log real-time, Theme Customizer, dan Component Showcase.
 
-- Stack: TanStack Start (full-stack React SSR), PostgreSQL (Kysely), Prisma (migration)
-- Render: SSR via Nitro, file-based routing via TanStack Router
-- Current state: Skeleton with auth, RBAC, SSE, UI shell, and code architecture patterns
+- Stack: TanStack Start (React SSR), PostgreSQL (Kysely), SQLite (audit log)
+- Auth: JWT stateless via `jose`, httpOnly cookie
+- Admin: `/admin/user-management` (Users tab + Groups tab), `/admin/audit-log`
+- Demo: `/demo/component/*` (UI component showcase)
+- Theme: CSS variable overrides + blocking script anti-flash
 
 ---
 
@@ -20,15 +22,15 @@ Bare Bone is a **generic full-stack application skeleton** built with TanStack S
 | File | Content |
 |------|--------|
 | [`01-PROJECT-OVERVIEW.md`](./01-PROJECT-OVERVIEW.md) | Stack, setup, scripts, environment vars |
-| [`02-ROUTE-MAP.md`](./02-ROUTE-MAP.md) | All routes, layout groups, sidebar |
-| [`03-ARCHITECTURE-BE.md`](./03-ARCHITECTURE-BE.md) | Backend: service layer, repository, server fn, contracts |
-| [`04-ARCHITECTURE-FE.md`](./04-ARCHITECTURE-FE.md) | Frontend: routing, components, query, SSE, UI patterns |
-| [`05-DATABASE-SCHEMA.md`](./05-DATABASE-SCHEMA.md) | All Kysely tables (actual schema) |
-| [`06-RBAC-PERMISSIONS.md`](./06-RBAC-PERMISSIONS.md) | Access system: visibleModules, permissions, module actions |
-| [`07-SSE-JOBS.md`](./07-SSE-JOBS.md) | In-memory SSE job system, job types, usage |
-| [`08-CODE-PATTERNS.md`](./08-CODE-PATTERNS.md) | Mandatory code patterns, anti-patterns, real examples |
+| [`02-ROUTE-MAP.md`](./02-ROUTE-MAP.md) | All routes, layout groups, sidebar, auth guard |
+| [`03-ARCHITECTURE-BE.md`](./03-ARCHITECTURE-BE.md) | Backend: auth service, system-action-logger, server fns |
+| [`04-ARCHITECTURE-FE.md`](./04-ARCHITECTURE-FE.md) | Frontend: routing, ThemeCustomizer, DemoNav, DataTable |
+| [`05-DATABASE-SCHEMA.md`](./05-DATABASE-SCHEMA.md) | PostgreSQL (Kysely) + SQLite (system_action_logs) |
+| [`06-RBAC-PERMISSIONS.md`](./06-RBAC-PERMISSIONS.md) | Group permission matrix, access control |
+| [`07-SSE-JOBS.md`](./07-SSE-JOBS.md) | SSE job system (not implemented yet) |
+| [`08-CODE-PATTERNS.md`](./08-CODE-PATTERNS.md) | Mandatory code patterns, anti-patterns |
 | [`09-FLOW-DIAGRAMS.md`](./09-FLOW-DIAGRAMS.md) | Interactive flow diagrams (Mermaid) |
-| [`10-ADR.md`](./10-ADR.md) | Architecture Decision Records (Design Rationale) |
+| [`10-ADR.md`](./10-ADR.md) | Architecture Decision Records |
 | [`11-RUNBOOK-TROUBLESHOOTING.md`](./11-RUNBOOK-TROUBLESHOOTING.md) | Development runbook & troubleshooting |
 | [`12-PRODUCTION-SCALING-GUIDE.md`](./12-PRODUCTION-SCALING-GUIDE.md) | Deployment & scaling guide |
 
@@ -36,58 +38,24 @@ Bare Bone is a **generic full-stack application skeleton** built with TanStack S
 
 ## Quick Reference for Agent
 
-### Adding a New Feature
-1. Create backend module at `src/backend/<feature>/`
-2. Add route at `src/routes/(app)/<group>/<module>/`
-3. Register module in `src/router/module-config.ts`
-4. Register permission in `src/lib/shared/permissions.ts`
+### Adding a New Admin Feature
+1. Create playground/UI di `src/features/crud/playgrounds/`
+2. Tambah route di `src/routes/(app)/admin/`
+3. Daftarkan di sidebar admin (`src/routes/(app)/admin/route.tsx`)
+4. Integrasikan `logAudit()` dari `@/lib/server/audit-action`
 
-### Design Decisions & Architecture
-→ Technology choices (Kysely, SQLite, In-Memory SSE) documented in [`10-ADR.md`](./10-ADR.md).
+### Design Decisions
+| Feature | Decision |
+|---------|----------|
+| Auth | JWT stateless (`jose`), httpOnly cookie, 24h expiry |
+| Audit Log | SQLite via `node:sqlite`, auto-create `logs/system-action.db` |
+| Theme | CSS variables overrides via `useThemeCustomizer` hook + blocking script |
+| Admin Routes | Protected via `beforeLoad` → `checkSession()` → redirect `/login` |
+| CRUD State | In-memory `useState` (demo), audit via server fn `logAudit` |
+| Tabs | shadcn `Tabs` with default variant (not `line`) |
 
 ### Troubleshooting
-→ Database locks, bundling errors, and permission issues in [`11-RUNBOOK-TROUBLESHOOTING.md`](./11-RUNBOOK-TROUBLESHOOTING.md).
-
-### Production Deployment Policy
-→ Blue/green deploy workflow, deploy guard scripts, and shell guards in [`12-PRODUCTION-SCALING-GUIDE.md`](./12-PRODUCTION-SCALING-GUIDE.md).
-
-### Server Function & Mutation Patterns
-→ See `createServerFn`, `createServerOnlyFn`, and `withSystemLog` wrapper patterns in [`08-CODE-PATTERNS.md`](./08-CODE-PATTERNS.md).
-
-### Database Runtime Access
-→ Database access must use Kysely query builder referencing schema definitions at `src/lib/server/db/schema.ts`. See [`05-DATABASE-SCHEMA.md`](./05-DATABASE-SCHEMA.md).
-
-### Backend Authorization Enforcement
-→ See `assertModuleVisible` and `assertModuleActionPermission` mechanisms in [`06-RBAC-PERMISSIONS.md`](./06-RBAC-PERMISSIONS.md).
-
-### Real-time Process Management (SSE)
-→ In-memory progress job creation, updates, and completion documented in [`07-SSE-JOBS.md`](./07-SSE-JOBS.md).
-
----
-
-## Path Aliases
-
-| Alias | Resolves to |
-|-------|------------|
-| `@/backend/*` | `src/backend/*` |
-| `@/lib/server/*` | `src/lib/server/*` |
-| `@/lib/client/*` | `src/lib/client/*` |
-| `@/lib/shared/*` | `src/lib/shared/*` |
-| `@/components/*` | `src/components/*` |
-| `@/router/*` | `src/router/*` |
-| `@/hooks/*` | `src/hooks/*` |
-| `@/utils/*` | `src/utils/*` |
-
----
-
-## Current State
-
-This is a **skeleton project** with no domain-specific modules yet. The following infrastructure is ready:
-
-- **Auth**: Custom session-based auth (cookie + SHA256 token hash)
-- **RBAC**: Module visibility + action permissions system
-- **SSE**: In-memory job progress tracking infrastructure
-- **UI Shell**: AppShell, Sidebar, Topbar, DataTable, and global components
-- **Architecture**: Service/Repository separation, server function patterns
-- **Database**: Kysely query builder ready, Prisma for migrations
-- **File Storage**: S3-compatible (MinIO) infrastructure
+- Auth: Pastikan `JWT_SECRET` di `.env`
+- Audit Log: `logs/system-action.db` auto-created
+- Theme: Blocking script di `scripts` array di `__root.tsx`
+- DB: `DATABASE_URL` dan `SSE_SHARED_SECRET` harus di `.env`

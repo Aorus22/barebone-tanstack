@@ -6,129 +6,170 @@ All routes are managed via **TanStack file-based routing**. The route generator 
 
 ## Layout Groups
 
-TanStack Router supports "pathless layout groups" with `(groupname)` folders.
+| Layout Group | Path prefix | Auth? | Layout |
+|---|---|---|---|
+| `(app)` | — | ✅ via `beforeLoad` | `(app)/route.tsx` (minimal) |
+| `(auth)` | — | ❌ public | Minimal layout |
 
-| Layout Group | Path prefix | Auth?         | Layout                     |
-| ------------ | ----------- | ------------- | -------------------------- |
-| `(app)`      | —           | ✅ auth required | `AppShell` + `SseProvider` |
-| `(auth)`     | —           | ❌ public     | Minimal layout             |
-| `(landing)`  | —           | ❌ public     | —                          |
-
-`(app)/route.tsx` executes `checkSession` in the `beforeLoad` function. If the user is not authenticated → router redirects to `/login`.
+`(app)/admin/route.tsx` executes `checkSession()` via `beforeLoad`. Jika tidak authenticated → redirect `/login`.
 
 ---
 
 ## All Routes
 
-### Auth Routes (`(auth)/`)
+### Auth Routes `(auth)/`
 
-| File                      | URL       | Description                     |
-| ------------------------- | --------- | ------------------------------- |
-| `(auth)/route.tsx`        | —         | Layout wrapper auth group       |
-| `(auth)/login.tsx`        | `/login`  | Login page                      |
-| `(auth)/logout.tsx`       | `/logout` | Server redirect after logout    |
+| File | URL | Description |
+|---|---|---|
+| `(auth)/route.tsx` | — | Layout wrapper |
+| `(auth)/login.tsx` | `/login` | Login page (username + password) — juga render ThemeCustomizer |
+| `(auth)/logout.tsx` | `/logout` | Clear cookie + redirect ke `/login` |
+| `(auth)/server-action.ts` | — | Server fns: `loginUser`, `logoutUser`, `checkSession`, `returnToOriginalAccount` |
 
-### App Routes (`(app)/`)
+### Admin Routes `(app)/admin/`
 
-| File                       | Description                                   |
-| -------------------------- | --------------------------------------------- |
-| `(app)/route.tsx`          | Layout group root — auth guard, AppShell      |
+Semua di-protect via `beforeLoad` → `checkSession()` → redirect `/login`.
 
-**No domain-specific routes exist yet.** When adding features, create modules under `(app)/<group>/<module>/`.
+| File | URL | Auth | Description |
+|---|---|---|---|
+| `(app)/admin/route.tsx` | `/admin` | ✅ | Layout: header + sidebar (User Management, Audit Log) + user nav (sign out) |
+| `(app)/admin/user-management.tsx` | `/admin/user-management` | ✅ | 2 tabs: Users (CRUD) + Groups (CRUD with permission matrix) |
+| `(app)/admin/audit-log/route.tsx` | `/admin/audit-log` | ✅ | Audit trail dari SQLite `system_action_logs` |
+| `(app)/admin/audit-log/query.ts` | — | ✅ | Server fn `getAuditLogPage` — pagination + sorting |
 
-### Special Routes (root `routes/`)
+### Demo Routes `(app)/demo/`
 
-| File              | Description                                            |
-| ----------------- | ------------------------------------------------------ |
-| `__root.tsx`      | Root layout, `QueryClientProvider`, theme              |
-| `index.tsx`       | Landing page                                           |
-| `healthz.ts`      | Health check endpoint                                  |
-| `readyz.ts`       | Readiness check endpoint                               |
-| `api/`            | Standard API router (not used)                         |
+| File | URL | Description |
+|---|---|---|
+| `(app)/demo/component/$slug.tsx` | `/demo/component/*` | UI component showcase (Button, Dialog, Charts, dll) |
 
----
+### Root Routes
 
-## Local Files in Route Directory
-
-Files prefixed with `-` are ignored by the router generator and will not be constructed as route pages:
-
-```
-settings/users/
-  -user-dialog.tsx            ← Local component (ignored by router)
-  -group-dialog.tsx
-  index.tsx                   ← Active route file
-  query.ts                    ← Server query utility (ignored)
-  server-action.ts            ← Server mutation utility (ignored)
-```
-
-**Ignore Rules**: Files `query.ts` and `server-action.ts` are explicitly excluded from auto-registration via bundler configuration in `vite.config.ts`:
-
-```ts
-routeFileIgnorePattern: "(^|/)(__root-query|query|server-action)\\.ts$"
-```
+| File | URL | Description |
+|---|---|---|
+| `__root.tsx` | — | Root layout: `<ThemeProvider>`, blocking script anti-flash, `Scripts` |
+| `(app)/route.tsx` | — | Layout group root — minimal `<Outlet />` |
+| `(app)/index.tsx` | `/` | Component showcase homepage (sidebar + header + catalog) |
+| `healthz.ts` | `/healthz` | Health check |
+| `readyz.ts` | `/readyz` | Readiness check |
+| `sw.ts` | `/sw` | Service worker |
 
 ---
 
-## Module Config (Single Source of Truth)
+## Auth & Admin Flow
 
-File: `src/router/module-config.ts`
-
-Currently minimal — exports only types:
-
-```ts
-export type ModuleGroup = string
-export type ModuleVisibilityRule = string
 ```
+/login → submit form → loginUser server fn → verify bcrypt → create JWT → set httpOnly cookie
+       → redirect ke /admin/user-management
 
-When adding modules, this file will define all sidebar modules with:
-- `id` — unique identifier
-- `path` — URL path (without leading `/`)
-- `label` — sidebar label
-- `pageTitle` — page title
-- `visibilityRule` — string matching `module_id` in DB
-- `group` — module group category
+/admin/* → beforeLoad → checkSession() → verify JWT dari cookie → invalid → redirect /login
+         → valid → render page
 
-Helper functions to implement:
-```ts
-getModuleConfig(moduleId)        // find one module
-getModulesByGroup(group)         // all modules per group
-getVisibleModulesByGroup(...)    // filter by user access
-getFirstVisibleModulePath(...)   // first accessible path
+/logout → clear cookie → redirect /login
 ```
 
 ---
 
-## Auth Flow
+## Theme Customizer Anti-Flash
 
-```
-User accesses /app/*
-  → (app)/route.tsx → beforeLoad → Execute checkSession()
-  → Not authenticated → Redirect to /login
+Di `__root.tsx`, blocking script di `<head>` (via `scripts` array) baca `theme-custom-colors` dari localStorage sebelum React mount:
 
-User submits login form
-  → Execute server action loginUser() → Calls auth.service.login()
-  → Session cookie stored (httpOnly, secure)
-  → Redirect to first visible module
-
-User clicks logout
-  → Execute logoutUser() → Deactivate session in DB (revoke) → Cookie removal
-  → Redirect to /login
+```js
+// Simplified logic
+var t = JSON.parse(localStorage.getItem('theme-custom-colors'))
+if (t.radius) document.documentElement.style.setProperty('--radius', t.radius)
+if (t.primary) document.documentElement.style.setProperty('--primary', t.primary)
 ```
 
-### Account Impersonation (Login As)
-
-Admin accounts with `auth.login_as` permission can simulate sessions as other users:
-- `loginAs()` in `auth.service.ts` — Generates a new session linked to `impersonator_user_id`
-- `returnFromImpersonation()` — Ends simulation and restores original admin session
-- All impersonation activity is logged in `auth_impersonation_audits`
+Script ini jalan SYNCHRONOUS saat HTML parsing, sebelum first paint.
 
 ---
 
-## App Shell Layout
+## Sidebar Navigation
 
-File `src/components/global/app-shell.tsx` is the main layout wrapper for all protected pages:
+### Admin Sidebar (`(app)/admin/route.tsx`)
 
-- Dynamic Sidebar navigation (adapts to user permissions)
-- Topbar with module group switcher and user profile
-- `SseProvider` initializes EventSource for async progress monitoring
-- `AppUpdateManager` monitors application build version updates
+```
+┌──────────────────────┐
+│ Admin                │
+│ • User Management 👥 │
+│ • Audit Log 📋       │
+├──────────────────────┤
+│ 👤 Admin             │
+│     ➜ Sign Out      │
+└──────────────────────┘
+```
+
+### Component Showcase Sidebar (`component-showcase-page.tsx`)
+
+```
+┌──────────────────────┐
+│ demo/ui              │
+├──────────────────────┤
+│ ACTIONS              │
+│  • Button     🖱️    │
+│  • Toggle     ...    │
+│ FORMS                │
+│  • Input      ...    │
+│ FEEDBACK             │
+│  • Dialog     ...    │
+├──────────────────────┤
+│ Theme  [☀️🌙💻]      │
+│ 👤 Admin             │
+│     ➜ Sign Out      │
+└──────────────────────┘
+```
+
+---
+
+## DemoNav (Module Group Switcher)
+
+`src/components/global/demo-nav.tsx` — popover button di kanan topbar:
+
+```
+[ 📊 Components ▾ ]  → dropdown: [Components] [Admin]
+```
+
+Ada di semua halaman: homepage, component detail, admin pages.
+Style: rounded (ikut `--radius` tema), border, bg-muted.
+
+---
+
+## Auth Service (`src/backend/auth/auth.service.ts`)
+
+| Function | Description |
+|---|---|
+| `login(username, password)` | Verify bcrypt → create JWT (24h) → update last_login |
+| `getSessionByToken(token)` | Verify JWT → return actor |
+| `loadAccessPayload(userId)` | Load group's visibleModules |
+| `logout()` | No-op (JWT stateless) |
+
+**JWT Config:**
+- Algorithm: HS256
+- Secret: `JWT_SECRET` dari `.env`
+- Payload: `{ sub, actor: { id, name, username, groupId, visibleModules } }`
+- Cookie: httpOnly, secure in production, sameSite lax
+
+---
+
+## Audit Log System (`src/lib/server/system-action-logger.ts`)
+
+SQLite database terpisah di `logs/system-action.db`:
+
+```sql
+CREATE TABLE system_action_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  created_at TEXT NOT NULL,
+  request_id TEXT NOT NULL,
+  action_name TEXT NOT NULL,
+  module TEXT NOT NULL,
+  operation TEXT NOT NULL,
+  actor_id TEXT, actor_name TEXT, session_id TEXT,
+  status TEXT NOT NULL CHECK(status IN ('SUCCESS','ERROR')),
+  duration_ms INTEGER NOT NULL,
+  error_code TEXT, error_message_safe TEXT, payload_json TEXT
+) STRICT
+```
+
+Auto-created saat pertama kali `getDb()` dipanggil.
+Data diakses via `getAuditLogPage` server fn dengan server-side pagination + sorting.
