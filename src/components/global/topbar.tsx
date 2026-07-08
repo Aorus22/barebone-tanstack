@@ -11,6 +11,7 @@ import {
 } from "lucide-react"
 import { useMemo, useState } from "react"
 import { useSseJobs } from "@/hooks/use-sse-jobs"
+import { ThemeCustomizer } from "./theme-customizer"
 import { Popover, PopoverContent, PopoverTrigger, PopoverClose } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 import {
@@ -219,6 +220,8 @@ export function Topbar({
             </div>
           )}
           
+          <ThemeCustomizer />
+
           <button
             onClick={onThemeToggle}
             className="w-10 h-10 rounded-full bg-background border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all cursor-pointer"
