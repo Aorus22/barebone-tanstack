@@ -182,17 +182,17 @@ export function DataTable<TData>({
 
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Baris per halaman</span>
-            <div className="w-24">
-              <Input
-                type="select"
-                value={String(currentPageSize)}
-                onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSize(Number(event.target.value))}
-                options={pageSizeOptions.map((size) => ({
-                  value: String(size),
-                  label: String(size),
-                }))}
-              />
-            </div>
+            <select
+              value={String(currentPageSize)}
+              onChange={(event) => setSize(Number(event.target.value))}
+              className="h-9 w-24 rounded-4xl border border-input bg-input/30 px-3 py-1 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            >
+              {pageSizeOptions.map((size) => (
+                <option key={size} value={String(size)}>
+                  {size}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       )}
