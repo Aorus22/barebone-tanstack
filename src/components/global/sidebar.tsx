@@ -52,7 +52,6 @@ export function Sidebar({
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
     new Set()
   )
-  const [lastExpandedGroup, setLastExpandedGroup] = useState<string | null>(null)
   const [pendingModulePath, setPendingModulePath] = useState<string | null>(null)
 
   useEffect(() => {
@@ -66,7 +65,6 @@ export function Sidebar({
         next.delete(groupId)
       } else {
         next.add(groupId)
-        setLastExpandedGroup(groupId)
       }
       return next
     })
@@ -77,29 +75,7 @@ export function Sidebar({
     onModuleChange(path)
   }
 
-  useEffect(() => {
-    if (activeModule) {
-      const el = document.getElementById(`nav-item-${activeModule}`)
-      if (el) {
-        const timer = setTimeout(() => {
-          el.scrollIntoView({ behavior: "smooth", block: "nearest" })
-        }, 150)
-        return () => clearTimeout(timer)
-      }
-    }
-  }, [activeModule])
 
-  useEffect(() => {
-    if (lastExpandedGroup) {
-      const el = document.getElementById(`sidebar-group-${lastExpandedGroup}`)
-      if (el) {
-        const timer = setTimeout(() => {
-          el.scrollIntoView({ behavior: "smooth", block: "nearest" })
-        }, 150)
-        return () => clearTimeout(timer)
-      }
-    }
-  }, [lastExpandedGroup])
 
   const allModules = [...moduleConfig] as ModuleItem[]
   const filteredModules = visibleModules
@@ -137,7 +113,7 @@ export function Sidebar({
         onClick={() => handleNavItemClick(module.path)}
         className={cn(
           "group relative flex w-full items-center whitespace-nowrap overflow-hidden",
-          isActive ? "transition-none" : "transition-all duration-200",
+          isActive ? "transition-none" : "transition-colors duration-200",
           isChild
             ? "gap-3 rounded-lg py-2.5"
             : "gap-4 rounded-xl py-3 px-4",
@@ -242,7 +218,7 @@ export function Sidebar({
                       <button
                         onClick={() => toggleGroup(parentId)}
                         className={cn(
-                          "group relative flex w-full items-center gap-4 overflow-hidden rounded-xl px-4 py-3 border whitespace-nowrap transition-all duration-200 text-muted-foreground hover:text-primary",
+                          "group relative flex w-full items-center gap-4 overflow-hidden rounded-xl px-4 py-3 border whitespace-nowrap transition-colors duration-200 text-muted-foreground hover:text-primary",
                           isAnyChildActive
                             ? "bg-muted/40 border-border/80"
                             : "border-transparent hover:bg-muted/50"

@@ -1,6 +1,15 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router"
 
+export type AppSearch = {
+  q?: string
+}
+
 export const Route = createFileRoute("/(app)")({
+  validateSearch: (search: Record<string, unknown>): AppSearch => {
+    return {
+      q: (search.q as string) || undefined,
+    }
+  },
   component: AppLayout,
 })
 
