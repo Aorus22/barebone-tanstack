@@ -158,8 +158,7 @@ export function AppShell({ children }: AppShellProps) {
   const handleTopbarSearch = (rawValue: string) => {
     const q = rawValue.trim()
     navigate({
-      to: location.pathname,
-      search: { q },
+      search: { q } as any,
     })
   }
 
