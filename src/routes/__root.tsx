@@ -29,6 +29,11 @@ export const Route = createRootRoute({
         href: appCss,
       },
     ],
+    scripts: [
+      {
+        children: "(function(){try{var e=localStorage.getItem('theme-custom-colors');if(!e)return;var t=JSON.parse(e),d=document.documentElement.style;if(t.radius)d.setProperty('--radius',t.radius);var p=t.primary;if(!p&&t.preset&&t.preset!=='default'){var m={emerald:'oklch(0.58 0.18 158)',violet:'oklch(0.52 0.22 285)',rose:'oklch(0.58 0.2 20)',amber:'oklch(0.68 0.18 85)',slate:'oklch(0.35 0.02 260)'};p=m[t.preset]}if(p){d.setProperty('--primary',p);d.setProperty('--ring',p);d.setProperty('--sidebar-primary',p)}}catch(e){}})()",
+      },
+    ],
   }),
   notFoundComponent: () => (
     <main className="container mx-auto p-4 pt-16">
@@ -55,7 +60,7 @@ function RootDocument() {
         <HeadContent />
       </head>
       <body>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
           <ConfirmModalProvider>
             <Outlet />
           </ConfirmModalProvider>
