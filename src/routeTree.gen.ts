@@ -9,11 +9,26 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SwRouteImport } from './routes/sw'
 import { Route as ReadyzRouteImport } from './routes/readyz'
 import { Route as HealthzRouteImport } from './routes/healthz'
+import { Route as authRouteRouteImport } from './routes/(auth)/route'
 import { Route as appRouteRouteImport } from './routes/(app)/route'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as appIndexRouteImport } from './routes/(app)/index'
+import { Route as OpsStatusRouteImport } from './routes/ops/status'
+import { Route as OpsDrainRouteImport } from './routes/ops/drain'
+import { Route as authLogoutRouteImport } from './routes/(auth)/logout'
+import { Route as authLoginRouteImport } from './routes/(auth)/login'
+import { Route as appAdminRouteRouteImport } from './routes/(app)/admin/route'
+import { Route as appAdminUserManagementRouteImport } from './routes/(app)/admin/user-management'
+import { Route as appAdminAuditLogRouteRouteImport } from './routes/(app)/admin/audit-log/route'
+import { Route as appDemoComponentSlugRouteImport } from './routes/(app)/demo/component/$slug'
 
+const SwRoute = SwRouteImport.update({
+  id: '/sw',
+  path: '/sw',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ReadyzRoute = ReadyzRouteImport.update({
   id: '/readyz',
   path: '/readyz',
@@ -24,50 +39,171 @@ const HealthzRoute = HealthzRouteImport.update({
   path: '/healthz',
   getParentRoute: () => rootRouteImport,
 } as any)
+const authRouteRoute = authRouteRouteImport.update({
+  id: '/(auth)',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const appRouteRoute = appRouteRouteImport.update({
   id: '/(app)',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
+const appIndexRoute = appIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => appRouteRoute,
+} as any)
+const OpsStatusRoute = OpsStatusRouteImport.update({
+  id: '/ops/status',
+  path: '/ops/status',
   getParentRoute: () => rootRouteImport,
+} as any)
+const OpsDrainRoute = OpsDrainRouteImport.update({
+  id: '/ops/drain',
+  path: '/ops/drain',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const authLogoutRoute = authLogoutRouteImport.update({
+  id: '/logout',
+  path: '/logout',
+  getParentRoute: () => authRouteRoute,
+} as any)
+const authLoginRoute = authLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => authRouteRoute,
+} as any)
+const appAdminRouteRoute = appAdminRouteRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => appRouteRoute,
+} as any)
+const appAdminUserManagementRoute = appAdminUserManagementRouteImport.update({
+  id: '/user-management',
+  path: '/user-management',
+  getParentRoute: () => appAdminRouteRoute,
+} as any)
+const appAdminAuditLogRouteRoute = appAdminAuditLogRouteRouteImport.update({
+  id: '/audit-log',
+  path: '/audit-log',
+  getParentRoute: () => appAdminRouteRoute,
+} as any)
+const appDemoComponentSlugRoute = appDemoComponentSlugRouteImport.update({
+  id: '/demo/component/$slug',
+  path: '/demo/component/$slug',
+  getParentRoute: () => appRouteRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
   '/healthz': typeof HealthzRoute
   '/readyz': typeof ReadyzRoute
+  '/sw': typeof SwRoute
+  '/admin': typeof appAdminRouteRouteWithChildren
+  '/login': typeof authLoginRoute
+  '/logout': typeof authLogoutRoute
+  '/ops/drain': typeof OpsDrainRoute
+  '/ops/status': typeof OpsStatusRoute
+  '/': typeof appIndexRoute
+  '/admin/audit-log': typeof appAdminAuditLogRouteRoute
+  '/admin/user-management': typeof appAdminUserManagementRoute
+  '/demo/component/$slug': typeof appDemoComponentSlugRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
   '/healthz': typeof HealthzRoute
   '/readyz': typeof ReadyzRoute
+  '/sw': typeof SwRoute
+  '/admin': typeof appAdminRouteRouteWithChildren
+  '/login': typeof authLoginRoute
+  '/logout': typeof authLogoutRoute
+  '/ops/drain': typeof OpsDrainRoute
+  '/ops/status': typeof OpsStatusRoute
+  '/': typeof appIndexRoute
+  '/admin/audit-log': typeof appAdminAuditLogRouteRoute
+  '/admin/user-management': typeof appAdminUserManagementRoute
+  '/demo/component/$slug': typeof appDemoComponentSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/(app)': typeof appRouteRoute
+  '/(app)': typeof appRouteRouteWithChildren
+  '/(auth)': typeof authRouteRouteWithChildren
   '/healthz': typeof HealthzRoute
   '/readyz': typeof ReadyzRoute
+  '/sw': typeof SwRoute
+  '/(app)/admin': typeof appAdminRouteRouteWithChildren
+  '/(auth)/login': typeof authLoginRoute
+  '/(auth)/logout': typeof authLogoutRoute
+  '/ops/drain': typeof OpsDrainRoute
+  '/ops/status': typeof OpsStatusRoute
+  '/(app)/': typeof appIndexRoute
+  '/(app)/admin/audit-log': typeof appAdminAuditLogRouteRoute
+  '/(app)/admin/user-management': typeof appAdminUserManagementRoute
+  '/(app)/demo/component/$slug': typeof appDemoComponentSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/healthz' | '/readyz'
+  fullPaths:
+    | '/healthz'
+    | '/readyz'
+    | '/sw'
+    | '/admin'
+    | '/login'
+    | '/logout'
+    | '/ops/drain'
+    | '/ops/status'
+    | '/'
+    | '/admin/audit-log'
+    | '/admin/user-management'
+    | '/demo/component/$slug'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/healthz' | '/readyz'
-  id: '__root__' | '/' | '/(app)' | '/healthz' | '/readyz'
+  to:
+    | '/healthz'
+    | '/readyz'
+    | '/sw'
+    | '/admin'
+    | '/login'
+    | '/logout'
+    | '/ops/drain'
+    | '/ops/status'
+    | '/'
+    | '/admin/audit-log'
+    | '/admin/user-management'
+    | '/demo/component/$slug'
+  id:
+    | '__root__'
+    | '/(app)'
+    | '/(auth)'
+    | '/healthz'
+    | '/readyz'
+    | '/sw'
+    | '/(app)/admin'
+    | '/(auth)/login'
+    | '/(auth)/logout'
+    | '/ops/drain'
+    | '/ops/status'
+    | '/(app)/'
+    | '/(app)/admin/audit-log'
+    | '/(app)/admin/user-management'
+    | '/(app)/demo/component/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  appRouteRoute: typeof appRouteRoute
+  appRouteRoute: typeof appRouteRouteWithChildren
+  authRouteRoute: typeof authRouteRouteWithChildren
   HealthzRoute: typeof HealthzRoute
   ReadyzRoute: typeof ReadyzRoute
+  SwRoute: typeof SwRoute
+  OpsDrainRoute: typeof OpsDrainRoute
+  OpsStatusRoute: typeof OpsStatusRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/sw': {
+      id: '/sw'
+      path: '/sw'
+      fullPath: '/sw'
+      preLoaderRoute: typeof SwRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/readyz': {
       id: '/readyz'
       path: '/readyz'
@@ -82,6 +218,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HealthzRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/(auth)': {
+      id: '/(auth)'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof authRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/(app)': {
       id: '/(app)'
       path: ''
@@ -89,21 +232,124 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof appRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
+    '/(app)/': {
+      id: '/(app)/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+      preLoaderRoute: typeof appIndexRouteImport
+      parentRoute: typeof appRouteRoute
+    }
+    '/ops/status': {
+      id: '/ops/status'
+      path: '/ops/status'
+      fullPath: '/ops/status'
+      preLoaderRoute: typeof OpsStatusRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/ops/drain': {
+      id: '/ops/drain'
+      path: '/ops/drain'
+      fullPath: '/ops/drain'
+      preLoaderRoute: typeof OpsDrainRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(auth)/logout': {
+      id: '/(auth)/logout'
+      path: '/logout'
+      fullPath: '/logout'
+      preLoaderRoute: typeof authLogoutRouteImport
+      parentRoute: typeof authRouteRoute
+    }
+    '/(auth)/login': {
+      id: '/(auth)/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof authLoginRouteImport
+      parentRoute: typeof authRouteRoute
+    }
+    '/(app)/admin': {
+      id: '/(app)/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof appAdminRouteRouteImport
+      parentRoute: typeof appRouteRoute
+    }
+    '/(app)/admin/user-management': {
+      id: '/(app)/admin/user-management'
+      path: '/user-management'
+      fullPath: '/admin/user-management'
+      preLoaderRoute: typeof appAdminUserManagementRouteImport
+      parentRoute: typeof appAdminRouteRoute
+    }
+    '/(app)/admin/audit-log': {
+      id: '/(app)/admin/audit-log'
+      path: '/audit-log'
+      fullPath: '/admin/audit-log'
+      preLoaderRoute: typeof appAdminAuditLogRouteRouteImport
+      parentRoute: typeof appAdminRouteRoute
+    }
+    '/(app)/demo/component/$slug': {
+      id: '/(app)/demo/component/$slug'
+      path: '/demo/component/$slug'
+      fullPath: '/demo/component/$slug'
+      preLoaderRoute: typeof appDemoComponentSlugRouteImport
+      parentRoute: typeof appRouteRoute
     }
   }
 }
 
+interface appAdminRouteRouteChildren {
+  appAdminAuditLogRouteRoute: typeof appAdminAuditLogRouteRoute
+  appAdminUserManagementRoute: typeof appAdminUserManagementRoute
+}
+
+const appAdminRouteRouteChildren: appAdminRouteRouteChildren = {
+  appAdminAuditLogRouteRoute: appAdminAuditLogRouteRoute,
+  appAdminUserManagementRoute: appAdminUserManagementRoute,
+}
+
+const appAdminRouteRouteWithChildren = appAdminRouteRoute._addFileChildren(
+  appAdminRouteRouteChildren,
+)
+
+interface appRouteRouteChildren {
+  appAdminRouteRoute: typeof appAdminRouteRouteWithChildren
+  appIndexRoute: typeof appIndexRoute
+  appDemoComponentSlugRoute: typeof appDemoComponentSlugRoute
+}
+
+const appRouteRouteChildren: appRouteRouteChildren = {
+  appAdminRouteRoute: appAdminRouteRouteWithChildren,
+  appIndexRoute: appIndexRoute,
+  appDemoComponentSlugRoute: appDemoComponentSlugRoute,
+}
+
+const appRouteRouteWithChildren = appRouteRoute._addFileChildren(
+  appRouteRouteChildren,
+)
+
+interface authRouteRouteChildren {
+  authLoginRoute: typeof authLoginRoute
+  authLogoutRoute: typeof authLogoutRoute
+}
+
+const authRouteRouteChildren: authRouteRouteChildren = {
+  authLoginRoute: authLoginRoute,
+  authLogoutRoute: authLogoutRoute,
+}
+
+const authRouteRouteWithChildren = authRouteRoute._addFileChildren(
+  authRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  appRouteRoute: appRouteRoute,
+  appRouteRoute: appRouteRouteWithChildren,
+  authRouteRoute: authRouteRouteWithChildren,
   HealthzRoute: HealthzRoute,
   ReadyzRoute: ReadyzRoute,
+  SwRoute: SwRoute,
+  OpsDrainRoute: OpsDrainRoute,
+  OpsStatusRoute: OpsStatusRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
